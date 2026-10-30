@@ -8,7 +8,7 @@ import {
   where,
   updateDoc,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, sanitizeFirestoreData } from '../firebase';
 import { Booking, BookingStatus, Post } from '../types';
 import { notificationService } from './notificationService';
 
@@ -54,7 +54,7 @@ export const bookingService = {
     const bookingRef = doc(collection(db, BOOKINGS_COLLECTION));
     const now = new Date().toISOString();
 
-    const newBooking: Booking = {
+    const rawBooking: Record<string, any> = {
       ...bookingData,
       id: bookingRef.id,
       status: 'pending',
@@ -64,6 +64,8 @@ export const bookingService = {
       createdAt: now,
       updatedAt: now,
     };
+
+    const newBooking = sanitizeFirestoreData(rawBooking);
 
     try {
       await setDoc(bookingRef, newBooking);

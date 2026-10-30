@@ -9,7 +9,7 @@ import {
   signOut,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, formatMobileToAuthEmail, handleFirestoreError, OperationType } from '../firebase';
+import { auth, db, formatMobileToAuthEmail, handleFirestoreError, OperationType, sanitizeFirestoreData } from '../firebase';
 import { UserProfile } from '../types';
 import { DEFAULT_VILLAGE } from '../config/village';
 
@@ -106,7 +106,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        await fetchProfile(user.uid);
+        const existingProf = await fetchProfile(user.uid);
+        if (!existingProf) {
+          const phoneFromEmail = user.email?.startsWith('user_')
+            ? user.email.replace('user_', '').replace('@shetmitra.internal', '')
+            : user.phoneNumber?.replace(/\D/g, '') || '98' + Math.floor(10000000 + Math.random() * 90000000);
+          const defaultProf: UserProfile = {
+            id: user.uid,
+            name: user.displayName || 'गावातील शेतकरी',
+            phone: phoneFromEmail,
+            village: DEFAULT_VILLAGE,
+            occupation: 'शेतकरी',
+            rating: 5.0,
+            reviewCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          try {
+            await setDoc(doc(db, 'users', user.uid), sanitizeFirestoreData(defaultProf));
+            setUserProfile(defaultProf);
+          } catch (e) {
+            console.warn('Could not auto-create profile:', e);
+            setUserProfile(defaultProf);
+          }
+        }
       } else {
         setUserProfile(null);
       }

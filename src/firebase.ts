@@ -68,6 +68,35 @@ export async function testFirestoreConnection() {
 testFirestoreConnection();
 
 /**
+ * Recursively strips all `undefined` values from an object before saving to Firestore.
+ * Firestore JS SDK strictly forbids `undefined` and throws:
+ * "Unsupported field value: undefined"
+ */
+export function sanitizeFirestoreData<T extends Record<string, any>>(obj: T): T {
+  if (obj === null || obj === undefined || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => (typeof item === 'object' && item !== null ? sanitizeFirestoreData(item) : item)) as any;
+  }
+
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) {
+      continue;
+    }
+    if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      result[key] = sanitizeFirestoreData(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+
+/**
  * Maps a verified 10-digit Indian mobile number to an internal auth identity.
  * This satisfies the requirement of authenticating via Mobile + Password
  * securely using Firebase Authentication, where passwords are encrypted

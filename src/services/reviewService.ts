@@ -8,7 +8,7 @@ import {
   where,
   updateDoc,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, sanitizeFirestoreData } from '../firebase';
 import { Booking, Review, UserProfile } from '../types';
 import { notificationService } from './notificationService';
 
@@ -54,11 +54,13 @@ export const reviewService = {
     const reviewRef = doc(collection(db, REVIEWS_COLLECTION));
     const now = new Date().toISOString();
 
-    const newReview: Review = {
+    const rawReview: Record<string, any> = {
       ...data,
       id: reviewRef.id,
       createdAt: now,
     };
+
+    const newReview = sanitizeFirestoreData(rawReview);
 
     try {
       // Save review document

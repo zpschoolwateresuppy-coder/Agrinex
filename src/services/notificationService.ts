@@ -7,7 +7,7 @@ import {
   where,
   updateDoc,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, sanitizeFirestoreData } from '../firebase';
 import { AppNotification } from '../types';
 
 const NOTIFICATIONS_COLLECTION = 'notifications';
@@ -21,12 +21,14 @@ export const notificationService = {
     bookingId?: string;
   }): Promise<void> {
     const notifRef = doc(collection(db, NOTIFICATIONS_COLLECTION));
-    const notif: AppNotification = {
+    const rawNotif: Record<string, any> = {
       ...data,
       id: notifRef.id,
       read: false,
       createdAt: new Date().toISOString(),
     };
+
+    const notif = sanitizeFirestoreData(rawNotif);
 
     try {
       await setDoc(notifRef, notif);

@@ -122,7 +122,7 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !userProfile) {
+    if (!currentUser) {
       setError('कृपया पोस्ट करण्यासाठी प्रथम लॉगिन करा.');
       return;
     }
@@ -141,29 +141,49 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
     setError(null);
 
     try {
-      await postService.createPost({
+      const authorName = userProfile?.name?.trim() || currentUser.displayName || 'गावातील शेतकरी';
+      const authorPhone = userProfile?.phone?.trim() || currentUser.phoneNumber?.replace(/\D/g, '') || '';
+      const effectiveVillage = postVillage.trim() || userProfile?.village?.trim() || DEFAULT_VILLAGE;
+
+      const postPayload: any = {
         authorId: currentUser.uid,
-        authorName: userProfile.name,
-        authorPhone: userProfile.phone,
-        village: postVillage.trim() || userProfile.village || DEFAULT_VILLAGE,
+        authorName,
+        village: effectiveVillage,
         postType,
         title: title.trim(),
         category,
-        requiredWorkers: postType === 'workers_needed' ? Number(requiredWorkers) : undefined,
-        cropName: cropName.trim() || undefined,
-        workDate,
-        workTime: workTime.trim() || undefined,
-        duration: duration.trim() || undefined,
         rate: Number(rate),
         rateType,
         location: location.trim() || 'शेतात / शिवारात',
-        description: description.trim() || undefined,
-        equipmentDetails: equipmentDetails.trim() || undefined,
-        isGroup: postType === 'work_wanted' ? isGroup : undefined,
-        groupCount: postType === 'work_wanted' && isGroup ? Number(groupCount) : 1,
-        experience: postType === 'work_wanted' ? experience.trim() : undefined,
         status: 'active',
-      });
+      };
+
+      if (authorPhone) {
+        postPayload.authorPhone = authorPhone;
+      }
+      if (workDate) {
+        postPayload.workDate = workDate;
+      }
+      if (description.trim()) {
+        postPayload.description = description.trim();
+      }
+
+      if (postType === 'workers_needed') {
+        postPayload.requiredWorkers = Math.max(1, Number(requiredWorkers) || 1);
+        if (cropName.trim()) postPayload.cropName = cropName.trim();
+        if (workTime.trim()) postPayload.workTime = workTime.trim();
+        if (duration.trim()) postPayload.duration = duration.trim();
+      } else if (postType === 'work_wanted') {
+        postPayload.isGroup = !!isGroup;
+        postPayload.groupCount = isGroup ? Math.max(1, Number(groupCount) || 1) : 1;
+        if (experience.trim()) postPayload.experience = experience.trim();
+      } else {
+        if (equipmentDetails.trim()) {
+          postPayload.equipmentDetails = equipmentDetails.trim();
+        }
+      }
+
+      await postService.createPost(postPayload);
 
       setSuccess(true);
       setTimeout(() => {

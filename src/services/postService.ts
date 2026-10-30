@@ -9,7 +9,7 @@ import {
   deleteDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, sanitizeFirestoreData } from '../firebase';
 import { Post, PostType } from '../types';
 import { DEFAULT_VILLAGE } from '../config/village';
 
@@ -28,7 +28,7 @@ export const postService = {
     const postRef = doc(collection(db, POSTS_COLLECTION));
     const now = new Date().toISOString();
 
-    const newPost: Post = {
+    const rawPost: Record<string, any> = {
       ...post,
       id: postRef.id,
       village: post.village?.trim() || DEFAULT_VILLAGE,
@@ -37,6 +37,8 @@ export const postService = {
       createdAt: now,
       updatedAt: now,
     };
+
+    const newPost = sanitizeFirestoreData(rawPost);
 
     try {
       await setDoc(postRef, newPost);

@@ -29,7 +29,7 @@
         "village": { "type": "string", "maxLength": 60 },
         "postType": {
           "type": "string",
-          "enum": ["workers_needed", "work_wanted", "tractor_service", "bullock_service"]
+          "enum": ["workers_needed", "work_wanted", "tractor_service", "bullock_service", "seeds", "fertilizers", "agri_tools", "agri_services"]
         },
         "title": { "type": "string", "minLength": 3, "maxLength": 120 },
         "category": { "type": "string", "maxLength": 60 },
