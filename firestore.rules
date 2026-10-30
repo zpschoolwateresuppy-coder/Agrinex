@@ -1,0 +1,170 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- User Validation ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'phone', 'village']) &&
+             data.keys().hasOnly(['id', 'name', 'phone', 'village', 'occupation', 'rating', 'reviewCount', 'createdAt', 'updatedAt']) &&
+             data.id is string && data.id == request.auth.uid &&
+             data.name is string && data.name.size() >= 2 && data.name.size() <= 80 &&
+             data.phone is string && data.phone.matches('^[0-9]{10}$') &&
+             data.village is string && data.village.size() >= 2 && data.village.size() <= 60 &&
+             (!('occupation' in data) || (data.occupation is string && data.occupation.size() <= 50)) &&
+             (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
+             (!('reviewCount' in data) || (data.reviewCount is number && data.reviewCount >= 0));
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming());
+      allow update: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming()) &&
+                       incoming().id == existing().id;
+      allow delete: if false;
+    }
+
+    // --- Post Validation ---
+    function isValidPost(data) {
+      return data.keys().hasAll(['authorId', 'authorName', 'village', 'postType', 'title', 'rate', 'rateType', 'status']) &&
+             data.authorId is string && data.authorId == request.auth.uid &&
+             data.authorName is string && data.authorName.size() <= 80 &&
+             data.village is string && data.village.size() <= 60 &&
+             data.postType in ['workers_needed', 'work_wanted', 'tractor_service', 'bullock_service'] &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 120 &&
+             data.rate is number && data.rate >= 0 &&
+             data.rateType is string && data.rateType.size() <= 30 &&
+             data.status in ['active', 'filled', 'cancelled', 'completed'] &&
+             (!('authorPhone' in data) || (data.authorPhone is string && data.authorPhone.size() <= 15)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 60)) &&
+             (!('requiredWorkers' in data) || (data.requiredWorkers is number && data.requiredWorkers >= 1 && data.requiredWorkers <= 200)) &&
+             (!('acceptedWorkersCount' in data) || (data.acceptedWorkersCount is number && data.acceptedWorkersCount >= 0)) &&
+             (!('cropName' in data) || (data.cropName is string && data.cropName.size() <= 60)) &&
+             (!('workDate' in data) || (data.workDate is string && data.workDate.size() <= 30)) &&
+             (!('workTime' in data) || (data.workTime is string && data.workTime.size() <= 50)) &&
+             (!('duration' in data) || (data.duration is string && data.duration.size() <= 50)) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 120)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             (!('equipmentDetails' in data) || (data.equipmentDetails is string && data.equipmentDetails.size() <= 200));
+    }
+
+    match /posts/{postId} {
+      allow get: if isSignedIn() && isValidId(postId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming());
+      allow update: if isSignedIn() && isValidId(postId) &&
+                       ((existing().authorId == request.auth.uid && isValidPost(incoming()) && incoming().authorId == existing().authorId) ||
+                        // Allow updating acceptedWorkersCount and status when bookings are accepted
+                        (incoming().diff(existing()).affectedKeys().hasOnly(['acceptedWorkersCount', 'status', 'updatedAt'])));
+      allow delete: if isSignedIn() && isValidId(postId) && existing().authorId == request.auth.uid;
+    }
+
+    // --- Booking Validation ---
+    function isValidBooking(data) {
+      return data.keys().hasAll(['postId', 'posterId', 'requesterId', 'village', 'agreedRate', 'status']) &&
+             data.postId is string && data.postId.size() <= 128 &&
+             data.posterId is string && data.posterId.size() <= 128 &&
+             data.requesterId is string && data.requesterId.size() <= 128 &&
+             data.village is string && data.village.size() <= 60 &&
+             data.agreedRate is number && data.agreedRate >= 0 &&
+             data.status in ['pending', 'accepted', 'rejected', 'cancelled', 'in_progress', 'completed'] &&
+             (!('postTitle' in data) || (data.postTitle is string && data.postTitle.size() <= 120)) &&
+             (!('postType' in data) || (data.postType is string && data.postType.size() <= 30)) &&
+             (!('posterName' in data) || (data.posterName is string && data.posterName.size() <= 80)) &&
+             (!('posterPhone' in data) || (data.posterPhone is string && data.posterPhone.size() <= 15)) &&
+             (!('requesterName' in data) || (data.requesterName is string && data.requesterName.size() <= 80)) &&
+             (!('requesterPhone' in data) || (data.requesterPhone is string && data.requesterPhone.size() <= 15)) &&
+             (!('workDate' in data) || (data.workDate is string && data.workDate.size() <= 30)) &&
+             (!('rateType' in data) || (data.rateType is string && data.rateType.size() <= 30)) &&
+             (!('requestedWorkersCount' in data) || (data.requestedWorkersCount is number && data.requestedWorkersCount >= 1)) &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 300)) &&
+             (!('hasPosterRated' in data) || (data.hasPosterRated is bool)) &&
+             (!('hasRequesterRated' in data) || (data.hasRequesterRated is bool));
+    }
+
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && isValidId(bookingId) &&
+                    (resource.data.requesterId == request.auth.uid || resource.data.posterId == request.auth.uid);
+      allow list: if isSignedIn() &&
+                     (resource.data.requesterId == request.auth.uid || resource.data.posterId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(bookingId) &&
+                       incoming().requesterId == request.auth.uid &&
+                       incoming().posterId != request.auth.uid &&
+                       isValidBooking(incoming());
+      allow update: if isSignedIn() && isValidId(bookingId) &&
+                       (existing().requesterId == request.auth.uid || existing().posterId == request.auth.uid) &&
+                       isValidBooking(incoming()) &&
+                       incoming().posterId == existing().posterId &&
+                       incoming().requesterId == existing().requesterId &&
+                       incoming().postId == existing().postId;
+      allow delete: if false;
+    }
+
+    // --- Review Validation ---
+    function isValidReview(data) {
+      return data.keys().hasAll(['bookingId', 'reviewerId', 'targetUserId', 'rating']) &&
+             data.bookingId is string && data.bookingId.size() <= 128 &&
+             data.reviewerId is string && data.reviewerId == request.auth.uid &&
+             data.targetUserId is string && data.targetUserId.size() <= 128 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             (!('reviewerName' in data) || (data.reviewerName is string && data.reviewerName.size() <= 80)) &&
+             (!('workQuality' in data) || (data.workQuality is string && data.workQuality.size() <= 50)) &&
+             (!('punctuality' in data) || (data.punctuality is string && data.punctuality.size() <= 50)) &&
+             (!('behavior' in data) || (data.behavior is string && data.behavior.size() <= 50)) &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() <= 400));
+    }
+
+    match /reviews/{reviewId} {
+      allow get: if isSignedIn() && isValidId(reviewId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(reviewId) &&
+                       isValidReview(incoming()) &&
+                       exists(/databases/$(database)/documents/bookings/$(incoming().bookingId)) &&
+                       get(/databases/$(database)/documents/bookings/$(incoming().bookingId)).data.status == 'completed';
+      allow update, delete: if false;
+    }
+
+    // --- Notification Validation ---
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'type', 'title', 'message', 'read']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.type is string && data.type.size() <= 40 &&
+             data.title is string && data.title.size() <= 100 &&
+             data.message is string && data.message.size() <= 300 &&
+             data.read is bool &&
+             (!('bookingId' in data) || (data.bookingId is string && data.bookingId.size() <= 128));
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && isValidId(notificationId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(notificationId) && isValidNotification(incoming());
+      allow update: if isSignedIn() && isValidId(notificationId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isSignedIn() && isValidId(notificationId) && existing().userId == request.auth.uid;
+    }
+  }
+}

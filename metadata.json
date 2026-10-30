@@ -1,0 +1,6 @@
+{
+  "name": "शेतमित्र (ShetMitra)",
+  "description": "आपल्या गावातील शेती सेवांचे एकच ठिकाण - शेतमित्र कृषी मंच",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile in ShetMitra village agriculture app",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "phone": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "village": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "occupation": { "type": "string", "maxLength": 50 },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "phone", "village"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Agricultural job, service, equipment or labour post in village",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string", "maxLength": 80 },
+        "authorPhone": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "village": { "type": "string", "maxLength": 60 },
+        "postType": {
+          "type": "string",
+          "enum": ["workers_needed", "work_wanted", "tractor_service", "bullock_service"]
+        },
+        "title": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 60 },
+        "requiredWorkers": { "type": "number" },
+        "acceptedWorkersCount": { "type": "number" },
+        "cropName": { "type": "string", "maxLength": 60 },
+        "workDate": { "type": "string", "maxLength": 30 },
+        "workTime": { "type": "string", "maxLength": 50 },
+        "duration": { "type": "string", "maxLength": 50 },
+        "rate": { "type": "number" },
+        "rateType": { "type": "string", "maxLength": 30 },
+        "location": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "equipmentDetails": { "type": "string", "maxLength": 200 },
+        "status": {
+          "type": "string",
+          "enum": ["active", "filled", "cancelled", "completed"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorName", "village", "postType", "title", "rate", "rateType", "status"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Booking request and confirmation between farmer and service provider / labourer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "postId": { "type": "string" },
+        "postTitle": { "type": "string", "maxLength": 120 },
+        "postType": { "type": "string", "maxLength": 30 },
+        "posterId": { "type": "string" },
+        "posterName": { "type": "string", "maxLength": 80 },
+        "posterPhone": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "requesterId": { "type": "string" },
+        "requesterName": { "type": "string", "maxLength": 80 },
+        "requesterPhone": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "village": { "type": "string", "maxLength": 60 },
+        "workDate": { "type": "string", "maxLength": 30 },
+        "agreedRate": { "type": "number" },
+        "rateType": { "type": "string", "maxLength": 30 },
+        "requestedWorkersCount": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "rejected", "cancelled", "in_progress", "completed"]
+        },
+        "note": { "type": "string", "maxLength": 300 },
+        "hasPosterRated": { "type": "boolean" },
+        "hasRequesterRated": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "posterId", "requesterId", "village", "agreedRate", "status"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Mutually submitted review and ratings after booking completion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bookingId": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "reviewerName": { "type": "string", "maxLength": 80 },
+        "targetUserId": { "type": "string" },
+        "rating": { "type": "number" },
+        "workQuality": { "type": "string", "maxLength": 50 },
+        "punctuality": { "type": "string", "maxLength": 50 },
+        "behavior": { "type": "string", "maxLength": 50 },
+        "comment": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bookingId", "reviewerId", "targetUserId", "rating"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app notifications for booking requests, status updates, and ratings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "maxLength": 40 },
+        "title": { "type": "string", "maxLength": 100 },
+        "message": { "type": "string", "maxLength": 300 },
+        "bookingId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "title", "message", "read"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered villager profiles"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Job and agricultural service listings"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Work and service booking requests"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Ratings and feedback between participants"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications for booking events"
+    }
+  }
+}
